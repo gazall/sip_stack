@@ -293,11 +293,11 @@ osip_util_replace_all_lws (char *sip_message)
 
   tmp = sip_message;
   for (; tmp[0] != '\0'; tmp++) {
-    if (('\0' == tmp[0])
+    if (('\0' == tmp[0])  //?, don't know meaning
         || ('\0' == tmp[1]) || ('\0' == tmp[2]) || ('\0' == tmp[3]))
       return;
 
-    if ((('\r' == tmp[0]) && ('\n' == tmp[1])
+    if ((('\r' == tmp[0]) && ('\n' == tmp[1])  //'\r''\n''\r''\n'或'\r''\r''\n''\n'就认为sip消息结束
          && ('\r' == tmp[2]) && ('\n' == tmp[3]))
         || (('\r' == tmp[0]) && ('\r' == tmp[1]))
         || (('\n' == tmp[0]) && ('\n' == tmp[1])))
@@ -839,15 +839,15 @@ _osip_message_parse (osip_message_t * sip, const char *buf, size_t length, int s
   /* skip initial \r\n */
   while (tmp[0] == '\r' || tmp[0] == '\n')
     tmp++;
-  osip_util_replace_all_lws (tmp);
+  osip_util_replace_all_lws (tmp);  //用空格来代替消息中的回车、换行、TAB
   /* parse request or status line */
-  i = __osip_message_startline_parse (sip, tmp, &next_header_index);
+  i = __osip_message_startline_parse (sip, tmp, &next_header_index); //解析request line行,通过开头字符是否是"SIP\"来区分是req、rsp
   if (i != 0 && !sipfrag) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Could not parse start line of message.\n"));
     osip_free (beg);
     return i;
   }
-  tmp = (char *) next_header_index;
+  tmp = (char *) next_header_index;  //用next_header_index来指示当前解析到什么位置
 
   /* parse headers */
   i = msg_headers_parse (sip, tmp, &next_header_index);

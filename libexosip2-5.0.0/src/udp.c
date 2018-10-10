@@ -1429,7 +1429,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     return OSIP_NOMEM;
   se->type = UNKNOWN_EVT;
   se->sip = NULL;
-  se->transactionid = 0;
+  se->transactionid = 0;  //transactionid 最终会赋值给 eXosip_event_t->tid
 
   tmp = buf[length];
   buf[length] = 0;
@@ -1437,12 +1437,12 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
   buf[length] = tmp;
 
   /* parse message and set up an event */
-  i = osip_message_init (&(se->sip));
-  if (i != 0) {
+  i = osip_message_init (&(se->sip)); //osip_message_t初始化,从socket接收到的消息解析后会保存在osip_message_t中的各个成员中
+  if (i != 0) {  //malloc失败,返回i != 0
     osip_free (se);
     return i;
   }
-  i = osip_message_parse (se->sip, buf, length);
+  i = osip_message_parse (se->sip, buf, length);   //将收到的sip消息从字符串格式解析成osip_message_t存入se->sip
   if (i != 0) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "could not parse message\n"));
     osip_message_free (se->sip);
@@ -1454,7 +1454,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "MESSAGE REC. CALLID:%s\n", se->sip->call_id->number));
   }
 
-  if (excontext->cbsipCallback != NULL) {
+  if (excontext->cbsipCallback != NULL) {  //用户注册的回调，为NULL应该不影响什么，不清楚能起什么作用 2018/10/10
     excontext->cbsipCallback (se->sip, 1);
   }
 
