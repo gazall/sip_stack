@@ -749,11 +749,11 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     else {
       i = recvfrom (reserved->udp_socket, reserved->buf, udp_message_max_length, 0, (struct sockaddr *) &sa, &slen);
     }
-#else
+#else             //将数据读到 reserved->buf 中，最长读8000字节
     i = (int) recvfrom (reserved->udp_socket, reserved->buf, udp_message_max_length, 0, (struct sockaddr *) &sa, &slen);
 #endif
 
-    if (i > 32) {
+    if (i > 32) {  //大于32认为sip消息有效，32不知道怎么定的
       char src6host[NI_MAXHOST];
       int recvport = 0;
 
@@ -799,7 +799,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
       int my_errno = errno;
 #endif
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Could not read socket (%i) (%i) (%s)\n", i, my_errno, strerror (my_errno)));
-      if (errno==0 || errno==34) {
+      if (errno==0 || errno==34) {   //这个 错误码 表示 应用层接收缓冲区 不足?
         udp_message_max_length = udp_message_max_length*2;
         osip_free(reserved->buf);
         reserved->buf = (char *) osip_malloc (udp_message_max_length * sizeof (char) + 1);
@@ -808,7 +808,7 @@ udp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
         _udp_tl_reset (excontext);
       }
     }
-    else {
+    else {  //i == 0 || 0 < i < 32, for udp
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "Dummy SIP message received\n"));
     }
   }
