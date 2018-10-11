@@ -1454,7 +1454,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO3, NULL, "MESSAGE REC. CALLID:%s\n", se->sip->call_id->number));
   }
 
-  if (excontext->cbsipCallback != NULL) {  //用户注册的回调，为NULL应该不影响什么，不清楚能起什么作用 2018/10/10
+  if (excontext->cbsipCallback != NULL) {  //用户注册的回调，为NULL应该不影响什么，用户可以注册自己的打印函数，将sip消息打印出来
     excontext->cbsipCallback (se->sip, 1);
   }
 
@@ -1466,7 +1466,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     }
   }
 
-  if (MSG_IS_REQUEST (se->sip)) {
+  if (MSG_IS_REQUEST (se->sip)) {   //请求消息分为:invite、ack和其他请求消息
     if (MSG_IS_INVITE (se->sip))
       se->type = RCV_REQINVITE;
     else if (MSG_IS_ACK (se->sip))
@@ -1488,8 +1488,9 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
       se->type = RCV_STATUS_3456XX;
   }
 
-  osip_message_fix_last_via_header (se->sip, host, port);
-  _eXosip_handle_rfc5626_ob (se->sip, host, port);
+  osip_message_fix_last_via_header (se->sip, host, port); //如果sip消息最上面的via中存在rport，且rport值为NULL，用port填充rport。
+  															//如果sip经过NAT(via中带的ip和host不想等)，则在via中添加一个received字段，值为host
+  _eXosip_handle_rfc5626_ob (se->sip, host, port);  //ignore  2018.10.11
 
   if (MSG_IS_RESPONSE (se->sip)) {
     _eXosip_handle_received_rport (se->sip, received_host, rport_port);

@@ -918,14 +918,14 @@ osip_message_fix_last_via_header (osip_message_t * request, const char *ip_addr,
   if (MSG_IS_RESPONSE (request))
     return OSIP_SUCCESS;        /* Don't fix Via header */
 
-  via = osip_list_get (&request->vias, 0);
+  via = osip_list_get (&request->vias, 0);  //得到第一个via，sip消息最上面的via
   if (via == NULL || via->host == NULL)
     /* Hey, we could build it? */
     return OSIP_BADPARAMETER;
 
-  osip_via_param_get_byname (via, "rport", &rport);
+  osip_via_param_get_byname (via, "rport", &rport);  //从via 携带的参数中找rport
   if (rport != NULL) {
-    if (rport->gvalue == NULL) {
+    if (rport->gvalue == NULL) {    //如果rport的值为NULL，则用实际对端发送消息的端口给rport赋值
       rport->gvalue = (char *) osip_malloc (9);
       if (rport->gvalue == NULL)
         return OSIP_NOMEM;
@@ -940,8 +940,8 @@ osip_message_fix_last_via_header (osip_message_t * request, const char *ip_addr,
   /* only add the received parameter if the 'sent-by' value does not contains
      this ip address */
   if (0 == strcmp (via->host, ip_addr)) /* don't need the received parameter */
-    return OSIP_SUCCESS;
-  osip_via_set_received (via, osip_strdup (ip_addr));
+    return OSIP_SUCCESS;  //via中存的ip和收到消息的源ip一致，非NAT
+  osip_via_set_received (via, osip_strdup (ip_addr));  //osip_strdup里面会malloc一段空间，将ip_addr拷贝进去
   return OSIP_SUCCESS;
 }
 
