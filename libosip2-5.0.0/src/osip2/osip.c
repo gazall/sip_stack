@@ -729,7 +729,7 @@ __osip_find_transaction (osip_t * osip, osip_event_t * evt, int consume)
   if (evt == NULL || evt->sip == NULL || evt->sip->cseq == NULL)
     return NULL;
 
-  if (EVT_IS_INCOMINGMSG (evt)) {
+  if (EVT_IS_INCOMINGMSG (evt)) {  //得到相关的事件队列，eXosip_t->osip_t->osip_***_transactions，指向transaction
     if (MSG_IS_REQUEST (evt->sip)) {
       if (0 == strcmp (evt->sip->cseq->method, "INVITE")
           || 0 == strcmp (evt->sip->cseq->method, "ACK")) {
@@ -877,12 +877,12 @@ osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
 
   transaction = (osip_transaction_t *) osip_list_get_first (transactions, &iterator);
   if (transaction != NULL)
-    osip = (osip_t *) transaction->config;
+    osip = (osip_t *) transaction->config; //eXosip_t->osip_t->osip_***_transactions->config保存的是eXosip_osip_t的指针
   if (osip == NULL)
     return NULL;
 
   if (EVT_IS_INCOMINGREQ (evt)) {
-#ifdef HAVE_DICT_DICT_H
+#ifdef HAVE_DICT_DICT_H   //这个先不看		2018.10.12
     /* search in hastable! */
     osip_generic_param_t *b_request;
     osip_via_t *topvia_request;
@@ -909,10 +909,11 @@ osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
     }
 #endif
 
-    transaction = (osip_transaction_t *) osip_list_get_first (transactions, &iterator);
-    while (osip_list_iterator_has_elem (iterator)) {
+    transaction = (osip_transaction_t *) osip_list_get_first (transactions, &iterator); //获取transactions队列的第一个transaction
+    while (osip_list_iterator_has_elem (iterator)) {  //遍历transactions
       if (0 == __osip_transaction_matching_request_osip_to_xist_17_2_3 (transaction, evt->sip))
-        return transaction;
+        return transaction;  //上面一行函数的作用:判断已存在的transaction和新收到的消息evt->sip是否是一个事件,
+        					//判断依据是：via头域的branch、port、host都相等，则认为是同一个事件
       transaction = (osip_transaction_t *) osip_list_get_next (&iterator);
     }
   }

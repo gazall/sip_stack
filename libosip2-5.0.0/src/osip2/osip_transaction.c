@@ -663,13 +663,13 @@ __osip_transaction_matching_request_osip_to_xist_17_2_3 (osip_transaction_t * tr
       request == NULL || request->cseq == NULL || request->cseq->method == NULL)
     return OSIP_BADPARAMETER;
 
-  topvia_request = osip_list_get (&request->vias, 0);
+  topvia_request = osip_list_get (&request->vias, 0);  //get topvia
   if (topvia_request == NULL) {
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_ERROR, NULL, "Remote UA is not compliant: missing a Via header!\n"));
     return OSIP_SYNTAXERROR;
   }
-  osip_via_param_get_byname (topvia_request, "branch", &b_request);
-  osip_via_param_get_byname (tr->topvia, "branch", &b_origrequest);
+  osip_via_param_get_byname (topvia_request, "branch", &b_request);  //从收到的sip消息的topvia中得到branch
+  osip_via_param_get_byname (tr->topvia, "branch", &b_origrequest);  //从已存在的transaction的topvia中得到branch
 
   if ((b_origrequest == NULL && b_request != NULL) || (b_origrequest != NULL && b_request == NULL))
     return OSIP_SYNTAXERROR;    /* one request is compliant, the other one is not... */
@@ -696,7 +696,7 @@ __osip_transaction_matching_request_osip_to_xist_17_2_3 (osip_transaction_t * tr
 
     /* can't be the same */
     if (0 == strncmp (b_origrequest->gvalue, "z9hG4bK", 7)
-        && 0 == strncmp (b_request->gvalue, "z9hG4bK", 7)) {
+        && 0 == strncmp (b_request->gvalue, "z9hG4bK", 7)) {  //compliant UA 符合标准的UA
       /* both request comes from a compliant UA */
       /* The request matches a transaction if the branch parameter
          in the request is equal to the one in the top Via header
@@ -708,7 +708,7 @@ __osip_transaction_matching_request_osip_to_xist_17_2_3 (osip_transaction_t * tr
        */
       if (0 != strcmp (b_origrequest->gvalue, b_request->gvalue))
         return OSIP_UNDEFINED_ERROR;    /* branch param does not match */
-      {
+      {           //如果是符合标准的sip消息，先匹配via branch，再匹配via ip和via port，都一直，则该transaction存在
         /* check the sent-by values */
         char *b_port = via_get_port (topvia_request);
         char *b_origport = via_get_port (tr->topvia);
@@ -729,13 +729,13 @@ __osip_transaction_matching_request_osip_to_xist_17_2_3 (osip_transaction_t * tr
       }
 #ifdef AC_BUG
       /* audiocodes bug (MP108-fxs-SIP-4-0-282-380) */
-      if (0 != osip_from_tag_match (tr->from, request->from))
+      if (0 != osip_from_tag_match (tr->from, request->from))  //不清楚这个条件宏的含义 2018.10.12
         return OSIP_UNDEFINED_ERROR;
 #endif
       if (                      /* MSG_IS_CANCEL(request)&& <<-- BUG from the spec?
                                    I always check the CSeq */
            (!(0 == strcmp (tr->cseq->method, "INVITE") && 0 == strcmp (request->cseq->method, "ACK")))
-           && 0 != strcmp (tr->cseq->method, request->cseq->method))
+           && 0 != strcmp (tr->cseq->method, request->cseq->method))  //tr和request类型不相等的前提下，tr不是invite、request不是ack?
         return OSIP_UNDEFINED_ERROR;
       return OSIP_SUCCESS;
     }
@@ -743,7 +743,7 @@ __osip_transaction_matching_request_osip_to_xist_17_2_3 (osip_transaction_t * tr
 
   /* Back to the old backward compatibilty mechanism for matching requests */
   if (0 != osip_call_id_match (tr->callid, request->call_id))
-    return OSIP_UNDEFINED_ERROR;
+    return OSIP_UNDEFINED_ERROR;  //don't want to see this in 2018.10.12 22:15，maybe previous code is enough
   if (MSG_IS_ACK (request)) {
     osip_generic_param_t *tag_from1;
     osip_generic_param_t *tag_from2;

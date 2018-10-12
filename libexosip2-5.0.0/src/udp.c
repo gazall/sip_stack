@@ -1493,7 +1493,7 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
   _eXosip_handle_rfc5626_ob (se->sip, host, port);  //ignore  2018.10.11
 
   if (MSG_IS_RESPONSE (se->sip)) {
-    _eXosip_handle_received_rport (se->sip, received_host, rport_port);
+    _eXosip_handle_received_rport (se->sip, received_host, rport_port); //在udp_tl_read_message调用过来，received_host和rport_port是空
     udp_tl_learn_port_from_via (excontext, se->sip);
   }
 
