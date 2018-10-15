@@ -363,6 +363,8 @@ extern "C" {
 
     void *your_instance;                /**< User Defined Pointer. */
     int transactionid;                  /**< Internal Transaction Identifier. */
+
+	//事务的先入先出队列，里面存的是该事务的消息。收到消息或要向外发消息，该消息匹配到已存在的事务，就会放入该队列
     osip_fifo_t *transactionff;         /**< events must be added in this fifo */
 
     osip_via_t *topvia;                 /**< CALL-LEG definition (Top Via) */

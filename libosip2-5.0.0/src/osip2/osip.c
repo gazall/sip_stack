@@ -704,7 +704,7 @@ osip_find_transaction_and_add_event (osip_t * osip, osip_event_t * evt)
   osip_transaction_t *transaction = __osip_find_transaction (osip, evt, 1);
 
   if (transaction == NULL)
-    return OSIP_UNDEFINED_ERROR;
+    return OSIP_UNDEFINED_ERROR;  //收到的第一条请求消息，没有事务能和他匹配
   return OSIP_SUCCESS;
 }
 
@@ -797,10 +797,10 @@ __osip_find_transaction (osip_t * osip, osip_event_t * evt, int consume)
 #ifndef OSIP_MONOTHREAD
   osip_mutex_lock (mut);
 #endif
-  transaction = osip_transaction_find (transactions, evt);
+  transaction = osip_transaction_find (transactions, evt);  //查找收到的消息或要发出去的消息是否是已存在的事务
   if (consume == 1) {           /* we add the event before releasing the mutex!! */
-    if (transaction != NULL) {
-      osip_transaction_add_event (transaction, evt);
+    if (transaction != NULL) {  //收到的消息和已存在的事务匹配上了
+      osip_transaction_add_event (transaction, evt);  //将该消息放入事务的先入先出队列中，这个队列在那四个状态机中会取出来
 #ifndef OSIP_MONOTHREAD
       osip_mutex_unlock (mut);
 #endif
@@ -881,8 +881,8 @@ osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
   if (osip == NULL)
     return NULL;
 
-  if (EVT_IS_INCOMINGREQ (evt)) {
-#ifdef HAVE_DICT_DICT_H   //这个先不看		2018.10.12
+  if (EVT_IS_INCOMINGREQ (evt)) {   //该消息是我们收到的请求消息
+#ifdef HAVE_DICT_DICT_H   //这个条件宏分支先不看		2018.10.12
     /* search in hastable! */
     osip_generic_param_t *b_request;
     osip_via_t *topvia_request;
@@ -908,16 +908,17 @@ osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
       }
     }
 #endif
-
+	//遍历已存在的事务，看该消息属于哪个事务
     transaction = (osip_transaction_t *) osip_list_get_first (transactions, &iterator); //获取transactions队列的第一个transaction
     while (osip_list_iterator_has_elem (iterator)) {  //遍历transactions
+      //1.请求消息，2.要判断该事务是否存在 ==> ack或者cancel还有bye消息? 需要确认一下 2018.10.15
       if (0 == __osip_transaction_matching_request_osip_to_xist_17_2_3 (transaction, evt->sip))
         return transaction;  //上面一行函数的作用:判断已存在的transaction和新收到的消息evt->sip是否是一个事件,
         					//判断依据是：via头域的branch、port、host都相等，则认为是同一个事件
       transaction = (osip_transaction_t *) osip_list_get_next (&iterator);
     }
   }
-  else if (EVT_IS_INCOMINGRESP (evt)) {
+  else if (EVT_IS_INCOMINGRESP (evt)) {  //该消息是我们收到的回复消息
 #ifdef HAVE_DICT_DICT_H
     /* search in hastable! */
     osip_generic_param_t *b_request;
@@ -947,8 +948,12 @@ osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
 
     transaction = (osip_transaction_t *) osip_list_get_first (transactions, &iterator);
     while (osip_list_iterator_has_elem (iterator)) {
+	  //这个函数的17_1_3和上面的17_2_3函数，是代表rfc3261的章节数？
       if (0 == __osip_transaction_matching_response_osip_to_xict_17_1_3 (transaction, evt->sip))
-        return transaction;
+        return transaction; //该函数的作用：找到收到的sip的回复消息对应的事务(回复消息都有对应的事务吧?)
+        					//事务匹配规则:1.收到的消息的topvia中的branch存在且不为空,
+        					//             2.收到的消息的topvia的branch和已存在的事务的topvia的branch相等
+        					//			   3.收到的消息的cseq中的method和已存在事务的method相等
       transaction = (osip_transaction_t *) osip_list_get_next (&iterator);
     }
   }

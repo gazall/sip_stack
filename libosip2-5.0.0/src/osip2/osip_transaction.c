@@ -586,8 +586,8 @@ __osip_transaction_matching_response_osip_to_xict_17_1_3 (osip_transaction_t * t
     return OSIP_SYNTAXERROR;
   }
   osip_via_param_get_byname (topvia_response, "branch", &b_response);
-  if (b_response == NULL) {
-#ifdef FWDSUPPORT
+  if (b_response == NULL) {   //如果收到的回复消息的topvia中没有branch字段
+#ifdef FWDSUPPORT  //定义了这个宏，就判断from_tag，cseq等。这里我们先不看 2018.10.15
     /* the from tag (unique) */
     if (from_tag_match (tr->from, response->from) != 0)
       return OSIP_UNDEFINED_ERROR;
@@ -614,12 +614,12 @@ __osip_transaction_matching_response_osip_to_xict_17_1_3 (osip_transaction_t * t
     return OSIP_SUCCESS;
 #else
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_BUG, NULL, "Remote UA is not compliant: missing a branch parameter in  Via header!\n"));
-    return OSIP_SYNTAXERROR;
+    return OSIP_SYNTAXERROR;   //我们认为，收到的回复消息topvia不存在branch，则事务不匹配
 #endif
   }
 
   if ((b_request->gvalue == NULL)
-      || (b_response->gvalue == NULL)) {
+      || (b_response->gvalue == NULL)) {  //我们之前发送的消息，或者我们收到的回复消息中的topvia的branch值为null，则不匹配
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_BUG, NULL, "Remote UA is not compliant: missing a branch parameter in  Via header!\n"));
     return OSIP_SYNTAXERROR;
   }

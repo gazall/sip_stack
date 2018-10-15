@@ -1497,12 +1497,13 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     udp_tl_learn_port_from_via (excontext, se->sip);
   }
 
+  //判断新收到的消息se是否能匹配到已存在的事务，i = 0表示能匹配到，能匹配到则将新收到的消息加入到对应事务的消息队列中
   i = osip_find_transaction_and_add_event (excontext->j_osip, se);
-  if (i != 0) {
+  if (i != 0) {  //没有匹配到
     /* this event has no transaction, */
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "no transaction for message\n"));
     eXosip_lock (excontext);
-    if (MSG_IS_REQUEST (se->sip))
+    if (MSG_IS_REQUEST (se->sip))  //是请求消息，一般都是第一条请求消息匹配不到
       _eXosip_process_newrequest (excontext, se, socket);
     else if (MSG_IS_RESPONSE (se->sip))
       _eXosip_process_response_out_of_transaction (excontext, se);
