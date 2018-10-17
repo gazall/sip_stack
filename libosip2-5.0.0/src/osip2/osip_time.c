@@ -31,7 +31,7 @@ static struct timeval offset = { 0, 0 };
 void
 add_gettimeofday (struct timeval *atv, int ms)
 {
-  int m;
+  int m;  //单位是秒
 
   if (ms >= 1000000) {
     atv->tv_usec = 0;

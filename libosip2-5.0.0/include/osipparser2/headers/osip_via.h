@@ -47,11 +47,11 @@
   struct osip_via
   {
     char *version;              /**< SIP Version */
-    char *protocol;             /**< Protocol used by SIP Agent */
+    char *protocol;             /**< Protocol used by SIP Agent */  //udp,tcp,tls
     char *host;                 /**< Host where to send answers */
     char *port;                 /**< Port where to send answers */
     char *comment;              /**< Comments about SIP Agent */
-    osip_list_t via_params;     /**< Via parameters */
+    osip_list_t via_params;     /**< Via parameters */  //rport,received等参数
   };
 
 #ifdef __cplusplus

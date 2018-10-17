@@ -753,7 +753,7 @@ _eXosip_process_message_within_dialog (struct eXosip_t *excontext, eXosip_call_t
 
 
 static void
-_eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int socket)
+_eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int socket)  //socket是接收套接字
 {
   osip_transaction_t *transaction;
   int i;

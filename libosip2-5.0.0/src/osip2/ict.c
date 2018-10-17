@@ -24,7 +24,7 @@
 #include "xixt.h"
 
 int
-__osip_ict_init (osip_ict_t ** ict, osip_t * osip, osip_message_t * invite)
+ __osip_ict_init (osip_ict_t ** ict, osip_t * osip, osip_message_t * invite)
 {
   osip_route_t *route;
   int i;
@@ -60,7 +60,7 @@ __osip_ict_init (osip_ict_t ** ict, osip_t * osip, osip_message_t * invite)
       else
         (*ict)->timer_d_length = 64 * DEFAULT_T1;
       osip_gettimeofday (&(*ict)->timer_a_start, NULL);
-      add_gettimeofday (&(*ict)->timer_a_start, (*ict)->timer_a_length);
+      add_gettimeofday (&(*ict)->timer_a_start, (*ict)->timer_a_length); 
       (*ict)->timer_d_start.tv_sec = -1;        /* not started */
     }
     else {                      /* reliable protocol is used: */
@@ -77,9 +77,9 @@ __osip_ict_init (osip_ict_t ** ict, osip_t * osip, osip_message_t * invite)
       if (64 * DEFAULT_T1 < 32000)
         (*ict)->timer_d_length = 32000;
       else
-        (*ict)->timer_d_length = 64 * DEFAULT_T1;
+        (*ict)->timer_d_length = 64 * DEFAULT_T1;  //32000
       osip_gettimeofday (&(*ict)->timer_a_start, NULL);
-      add_gettimeofday (&(*ict)->timer_a_start, (*ict)->timer_a_length);
+      add_gettimeofday (&(*ict)->timer_a_start, (*ict)->timer_a_length);  //timer_a_start定在500ms后
       (*ict)->timer_d_start.tv_sec = -1;        /* not started */
     }
     else {                      /* reliable protocol is used: */

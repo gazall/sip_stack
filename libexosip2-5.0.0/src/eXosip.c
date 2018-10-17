@@ -97,6 +97,9 @@ _eXosip_transaction_init (struct eXosip_t *excontext, osip_transaction_t ** tran
 {
   int i;
 
+  //1.为transaction分配空间，使用message对transaction的各个成员赋值，
+  //2.设置transaction对应的消息重传定时器
+  //3.将transaction插入到osip中对应的事件队列的队尾
   i = osip_transaction_init (transaction, ctx_type, osip, message);
   if (i != 0) {
     return i;
@@ -107,11 +110,11 @@ _eXosip_transaction_init (struct eXosip_t *excontext, osip_transaction_t ** tran
     struct timeval now;
     excontext->statistics.allocated_transactions++;
     osip_gettimeofday(&now, NULL);
-    _eXosip_counters_update(&excontext->average_transactions, 1, &now);
+    _eXosip_counters_update(&excontext->average_transactions, 1, &now);  //看不懂 2018.10.17 22:48
   }
 #endif
 
-  osip_transaction_set_reserved1 (*transaction, excontext);
+  osip_transaction_set_reserved1 (*transaction, excontext);  //transaction->reserved1 = excontext(eXosip_t *)
   {
     osip_naptr_t *naptr_record = NULL;
     if (ctx_type==NICT || ctx_type==ICT)

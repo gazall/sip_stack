@@ -57,14 +57,14 @@ extern "C" {
  */
   typedef enum _state_t {
     /* STATES for invite client transaction */
-    ICT_PRE_CALLING,
+    ICT_PRE_CALLING,  //发出去第一条sip消息
     ICT_CALLING,
     ICT_PROCEEDING,
     ICT_COMPLETED,
     ICT_TERMINATED,
 
     /* STATES for invite server transaction */
-    IST_PRE_PROCEEDING,
+    IST_PRE_PROCEEDING,  //收到第一条消息
     IST_PROCEEDING,
     IST_COMPLETED,
     IST_CONFIRMED,
@@ -568,6 +568,7 @@ extern "C" {
     void *ixt_fastmutex;           /**< mutex for IXT transaction */
     void *id_mutex;                /**< mutex for unique transaction id generation */
     int transactionid;             /**< previous unique transaction id generation */
+								   //用来标识一个transaction
 
     /* list of transactions for ict, ist, nict, nist */
     osip_list_t osip_ict_transactions;          /**< list of ict transactions */

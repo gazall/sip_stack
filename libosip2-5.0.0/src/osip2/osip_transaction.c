@@ -107,6 +107,9 @@ __osip_transaction_set_cseq (osip_transaction_t * transaction, osip_cseq_t * cse
   return i;
 }
 
+//1.为transaction分配空间，使用message对transaction的各个成员赋值，
+//2.设置transaction对应的消息重传定时器
+//3.将transaction插入到osip中对应的事件队列的队尾
 int
 osip_transaction_init (osip_transaction_t ** transaction, osip_fsm_type_t ctx_type, osip_t * osip, osip_message_t * request)
 {
@@ -141,7 +144,7 @@ osip_transaction_init (osip_transaction_t ** transaction, osip_fsm_type_t ctx_ty
   (*transaction)->ist_context = NULL;
   (*transaction)->nict_context = NULL;
   (*transaction)->nist_context = NULL;
-  (*transaction)->config = osip;
+  (*transaction)->config = osip;  //osip_transaction_t->config反指向osip_t
 
   topvia = osip_list_get (&request->vias, 0);
   if (topvia == NULL) {
@@ -149,7 +152,7 @@ osip_transaction_init (osip_transaction_t ** transaction, osip_fsm_type_t ctx_ty
     *transaction = NULL;
     return OSIP_SYNTAXERROR;
   }
-  i = __osip_transaction_set_topvia (*transaction, topvia);
+  i = __osip_transaction_set_topvia (*transaction, topvia);  //将sip消息的topvia保存在osip_transaction_t->topvia
   if (i != 0) {
     osip_transaction_free (*transaction);
     *transaction = NULL;
@@ -197,15 +200,17 @@ osip_transaction_init (osip_transaction_t ** transaction, osip_fsm_type_t ctx_ty
 
   if (ctx_type == ICT) {
     (*transaction)->state = ICT_PRE_CALLING;
-    i = __osip_ict_init (&((*transaction)->ict_context), osip, request);
+	//ict_context用来设置重传定时器，ict有两种定时器
+	//对于udp协议，timer_a设置为500ms之后，timer_d在函数__osip_ict_init中还没激活，估计是等到timer_a触发后激活
+    i = __osip_ict_init (&((*transaction)->ict_context), osip, request);  
     if (i != 0) {
       osip_transaction_free (*transaction);
       *transaction = NULL;
       return i;
     }
-    __osip_add_ict (osip, *transaction);
+    __osip_add_ict (osip, *transaction);  //将transaction插入osip_t->osip_ict_transactions队列末尾，插入的是指针
   }
-  else if (ctx_type == IST) {
+  else if (ctx_type == IST) {  
     (*transaction)->state = IST_PRE_PROCEEDING;
     i = __osip_ist_init (&((*transaction)->ist_context), osip, request);
     if (i != 0) {
@@ -235,6 +240,13 @@ osip_transaction_init (osip_transaction_t ** transaction, osip_fsm_type_t ctx_ty
     }
     __osip_add_nist (osip, *transaction);
   }
+  //上面所用的__osip_****_init函数的作用都是设置定时器，
+  //不同类型的sip消息有不同的定时器
+  //一个定时器有两个要素
+  //1.timer_*_length : 定时器时长
+  //2.timer_*_start : timer_*_start.tv_sec = -1，定时器不触发, >=0，定时器在timer_*_length时间后触发
+
+  
   return OSIP_SUCCESS;
 }
 
