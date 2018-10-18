@@ -186,6 +186,7 @@ _eXosip_process_ack (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dial
   osip_event_free (evt);
 }
 
+//如果cancel和invite的topvia branch相等，cancel和invite就匹配上了
 static int
 _cancel_match_invite (osip_transaction_t * invite, osip_message_t * cancel)
 {
@@ -203,7 +204,7 @@ _cancel_match_invite (osip_transaction_t * invite, osip_message_t * cancel)
   if (br2 != NULL && br == NULL)
     return OSIP_UNDEFINED_ERROR;
   if (br2 != NULL && br != NULL) {      /* compliant UA  :) */
-    if (br->gvalue != NULL && br2->gvalue != NULL && 0 == strcmp (br->gvalue, br2->gvalue))
+    if (br->gvalue != NULL && br2->gvalue != NULL && 0 == strcmp (br->gvalue, br2->gvalue))  //这个条件如果能满足，cancel应该在osip_find_transaction里面就被invite匹配到，写在这里多次一举啊 2018.10.18
       return OSIP_SUCCESS;
     return OSIP_UNDEFINED_ERROR;
   }
@@ -783,7 +784,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
   }
 
   transaction = NULL;
-  if (ctx_type != -1) {
+  if (ctx_type != -1) {  //这个条件分支都是在init osip_transaction_t
     i = _eXosip_transaction_init (excontext, &transaction, (osip_fsm_type_t) ctx_type, excontext->j_osip, evt->sip);
     if (i != 0) {
       osip_event_free (evt);
@@ -796,12 +797,12 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
     evt->transactionid = transaction->transactionid;
     osip_transaction_set_reserved2 (transaction, NULL);
 
-    osip_transaction_add_event (transaction, evt);
+    osip_transaction_add_event (transaction, evt);  //osip_event_t加入transaction的消息队列中
   }
 
   if (MSG_IS_CANCEL (evt->sip)) {
     /* special handling for CANCEL */
-    /* in the new spec, if the CANCEL has a Via branch, then it
+    /* in the new spec, if the CANCEL has a Via branch, then it  //如果cancel的branch和invite相同，是可以匹配到transaction的，不会走到process_newrequest函数
        is the same as the one in the original INVITE */
     _eXosip_process_cancel (excontext, transaction, evt);
     return;

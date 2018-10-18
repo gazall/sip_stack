@@ -382,8 +382,8 @@ extern "C" {
     time_t birth_time;                  /**< birth date of transaction        */
     time_t completed_time;              /**< end   date of transaction        */
 
-    int in_socket;                      /**< Optional socket for incoming message */
-    int out_socket;                     /**< Optional place for outgoing message */
+    int in_socket;                      /**< Optional socket for incoming message */ //监听套接字
+    int out_socket;                     /**< Optional place for outgoing message */  //使用udp，也是监听套接字
 
     void *config;                       /**< (internal) transaction is managed by osip_t  */
 

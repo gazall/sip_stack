@@ -117,7 +117,7 @@ _eXosip_transaction_init (struct eXosip_t *excontext, osip_transaction_t ** tran
   osip_transaction_set_reserved1 (*transaction, excontext);  //transaction->reserved1 = excontext(eXosip_t *)
   {
     osip_naptr_t *naptr_record = NULL;
-    if (ctx_type==NICT || ctx_type==ICT)
+    if (ctx_type==NICT || ctx_type==ICT)  //我们发出去的消息  先不看 2018.10.18
       i = _eXosip_srv_lookup (excontext, message, &naptr_record);
     if (i < 0) {
       /* might be a simple DNS request or an IP */
