@@ -236,17 +236,18 @@ _eXosip_process_cancel (struct eXosip_t *excontext, osip_transaction_t * transac
   /* first, look for a Dialog in the map of element */
   for (jc = excontext->j_calls; jc != NULL; jc = jc->next) {
     if (jc->c_inc_tr != NULL) {
-      i = _cancel_match_invite (jc->c_inc_tr, evt->sip);
-      if (i == 0) {
-        tr = jc->c_inc_tr;
+      i = _cancel_match_invite (jc->c_inc_tr, evt->sip); 
+      if (i == 0) {       //jc->c_inc-tr 的 via branch 和 evt->sip 的 via branch相同
+        tr = jc->c_inc_tr; //cancel匹配到事务，整个的eXosip_call_t都应该被取消
         /* fixed */
-        if (jc->c_dialogs != NULL)
+        if (jc->c_dialogs != NULL)  //最多就两个dialog吧，上行和下行
           jd = jc->c_dialogs;
         break;
       }
     }
     tr = NULL;
-    for (jd = jc->c_dialogs; jd != NULL; jd = jd->next) {
+    for (jd = jc->c_dialogs; jd != NULL; jd = jd->next) {  //目前的想法是eXosip_dialog_t位于eXosip_call_t中，最多两个，一个上行dialog，一个下行
+    														//使用上面jc->c_inc_tr就够了，为什么这里还要匹配?
       osip_list_iterator_t it;
       tr = (osip_transaction_t*)osip_list_get_first(jd->d_inc_trs, &it);
       while (tr != OSIP_SUCCESS) {
@@ -285,7 +286,7 @@ _eXosip_process_cancel (struct eXosip_t *excontext, osip_transaction_t * transac
     return;
   }
 
-  if (tr->state == IST_TERMINATED || tr->state == IST_CONFIRMED || tr->state == IST_COMPLETED) {
+  if (tr->state == IST_TERMINATED || tr->state == IST_CONFIRMED || tr->state == IST_COMPLETED) { //只有未达到稳态的消息，才能被cancel取消
     /* I can't find the status code in the rfc?
        (I read I must answer 200? wich I found strange)
        I probably misunderstood it... and prefer to send 481
@@ -797,14 +798,15 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
     evt->transactionid = transaction->transactionid;
     osip_transaction_set_reserved2 (transaction, NULL);
 
-    osip_transaction_add_event (transaction, evt);  //osip_event_t加入transaction的消息队列中
+    osip_transaction_add_event (transaction, evt);  //osip_event_t加入transaction的消息队列transactionff中
   }
 
-  if (MSG_IS_CANCEL (evt->sip)) {
+  if (MSG_IS_CANCEL (evt->sip)) { //cancel和nist中的transaction匹配，invite和ist中的transaction匹配，所以osip_find_transaction中cancel匹配不到invite
     /* special handling for CANCEL */
-    /* in the new spec, if the CANCEL has a Via branch, then it  //如果cancel的branch和invite相同，是可以匹配到transaction的，不会走到process_newrequest函数
+    /* in the new spec, if the CANCEL has a Via branch, then it
        is the same as the one in the original INVITE */
-    _eXosip_process_cancel (excontext, transaction, evt);
+    _eXosip_process_cancel (excontext, transaction, evt);  //cancal匹配到invite，就先返回200ok，再发送487。否则返回481。
+    														//匹配到的eXosip_call_t和eXosip_dialog_t会放到transaction的reserver2和reserver3参数中
     return;
   }
 
@@ -1504,7 +1506,8 @@ _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t l
     /* this event has no transaction, */
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "no transaction for message\n"));
     eXosip_lock (excontext);
-    if (MSG_IS_REQUEST (se->sip))  //是请求消息，一般都是第一条请求消息匹配不到
+    if (MSG_IS_REQUEST (se->sip))  //第一条invite，ack，cancel都会到这个处理流程中。ack的branch和invite的不同。cancel的branch和invite的相同。
+    								//但是osip_find_transaction中，cancel是和nist匹配，invite是和ist匹配
       _eXosip_process_newrequest (excontext, se, socket);
     else if (MSG_IS_RESPONSE (se->sip))
       _eXosip_process_response_out_of_transaction (excontext, se);

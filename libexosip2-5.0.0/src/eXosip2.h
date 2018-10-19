@@ -240,8 +240,8 @@ extern "C" {
 
     int c_id;
     eXosip_dialog_t *c_dialogs;
-    osip_transaction_t *c_inc_tr;
-    osip_transaction_t *c_out_tr;
+    osip_transaction_t *c_inc_tr;  //incoming invite ?
+    osip_transaction_t *c_out_tr;  //out invite ?  eXosip_call_t是表示B2BUA的结构体? 2018.10.19
     int c_retry;                /* avoid too many unsuccessful retry */
     void *external_reference;
 
