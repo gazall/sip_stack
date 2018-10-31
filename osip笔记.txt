@@ -86,12 +86,132 @@
 		eXosip_call_t *parent;
   };
   
-  
- 四、主要函数说明
+ struct eXosip_t {     //全局结构体(excontext)
+#ifndef MINISIZE
+    struct eXosip_stats statistics;
+    struct eXosip_counters average_transactions;
+    struct eXosip_counters average_registrations;
+    struct eXosip_counters average_calls;
+    struct eXosip_counters average_publications;
+    struct eXosip_counters average_subscriptions;
+    struct eXosip_counters average_insubscriptions;
+#endif
+
+    struct eXtl_protocol eXtl_transport;
+    void *eXtludp_reserved;
+    void *eXtltcp_reserved;
+#ifndef DISABLE_TLS
+    void *eXtltls_reserved;
+    void *eXtldtls_reserved;
+#endif
+    void *tunnel_handle;
+    char transport[10];
+    char *user_agent;
+
+    eXosip_reg_t *j_reg;        /* my registrations */
+    eXosip_call_t *j_calls;     /* my calls        */ //发invite/notify或者收invite时，会初始化一个eXosip_call_t，放入j_calls
+#ifndef MINISIZE
+    eXosip_subscribe_t *j_subscribes;   /* my friends      */
+    eXosip_notify_t *j_notifies;        /* my susbscribers */
+    eXosip_pub_t *j_pub;        /* my publications  */
+#endif
+    osip_list_t j_transactions;
+
+    osip_t *j_osip;
+    int j_stop_ua;
+#ifndef OSIP_MONOTHREAD
+    void *j_cond;
+    void *j_mutexlock;
+    void *j_thread;
+    jpipe_t *j_socketctl;
+    jpipe_t *j_socketctl_event;
+#endif
+    int max_message_to_read;
+    long int max_read_timeout;
+    
+    osip_fifo_t *j_events;
+
+    jauthinfo_t *authinfos;
+
+    struct timeval cc_timer;
+    struct timeval ka_timer;
+    int ka_interval;
+    char ka_crlf[5];
+    int ka_options;
+    int learn_port;
+    int use_rport;
+    int remove_prerouteset;
+    int dns_capabilities;
+    int enable_dns_cache;
+    int dscp;
+    int register_with_date;
+    int autoanswer_bye;
+    int ipv6_enable;
+    char ipv4_for_gateway[256];
+    char ipv6_for_gateway[256];
+    struct eXosip_dns_cache dns_entries[MAX_EXOSIP_DNS_ENTRY];
+    struct eXosip_account_info account_entries[MAX_EXOSIP_ACCOUNT_INFO];
+    struct eXosip_http_auth http_auths[MAX_EXOSIP_HTTP_AUTH];
+
+    /* udp pre-config */
+    char udp_firewall_ip[64];
+    char udp_firewall_port[10];
+
+    /* tcp pre-config */
+    char tcp_firewall_ip[64];
+    char tcp_firewall_port[10];
+
+    /* tls pre-config */
+    char tls_firewall_ip[64];
+    char tls_firewall_port[10];
+    int tls_verify_client_certificate;
+    eXosip_tls_ctx_t eXosip_tls_ctx_params;
+    char tls_local_cn_name[128];
+    char tls_client_local_cn_name[128];
+
+    /* dtls pre-config */
+    char dtls_firewall_ip[64];
+    char dtls_firewall_port[10];
+
+    CbSipCallback cbsipCallback;
+    int masquerade_via;
+    int auto_masquerade_contact;
+    int reuse_tcp_port;
+    int use_ephemeral_port;
+    int enable_outbound;
+    char oc_local_address[64];
+    int oc_local_port_range[2];
+    int oc_local_port_current;
+
+    CbSipWakeLock cbsipWakeLock;
+    int outgoing_wake_lock_state;
+    int incoming_wake_lock_state;
+
+    char sip_instance[37]; /* can only be used if ONE excontext is used for ONE registration only */
+    char default_contact_displayname[256];
+  }
+ 
+ 
+四、主要函数说明
 
 //先读消息，读到或超时未读到就接着执行下面的状态机函数，效率不高
 //可以把读消息和状态机执行函数分开，m个线程专门读(这些线程不需要eXosip_t)。
 //n个线程专门调用状态机执行函数(这n个线程可以一个自己的eXosip_t，一共n个)
 //m个读线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
 //哪一个状态机处理线程处理相应的状态
-int eXosip_execute (struct eXosip_t *excontext)
+int eXosip_execute (struct eXosip_t *excontext);
+
+//更新新建call和dialog的cid和did
+void _eXosip_update (struct eXosip_t *excontext);
+
+//该函数是构建一个回复消息，将request消息的from,to,vias,cseq等消息拷贝给要构建的response
+int _eXosip_build_response_default (struct eXosip_t *excontext, osip_message_t ** dest, osip_dialog_t * dialog, int status, osip_message_t * request);
+
+//设置response的contact, record-route(把request的record-route拷贝到response消息上)
+int _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osip_message_t * response, osip_message_t * request);
+
+//业务线程等待协议栈上报eXosip_event_t
+eXosip_event_t *eXosip_event_wait (struct eXosip_t * excontext, int tv_s, int tv_ms)
+
+//触发
+_eXosip_wakeup (struct eXosip_t *excontext);

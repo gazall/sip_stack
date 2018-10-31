@@ -414,7 +414,7 @@ struct eXosip_counters {
 
   typedef struct eXosip_t eXosip_t;
 
-  struct eXosip_t {
+  struct eXosip_t {     //全局结构体
 #ifndef MINISIZE
     struct eXosip_stats statistics;
     struct eXosip_counters average_transactions;
@@ -437,7 +437,7 @@ struct eXosip_counters {
     char *user_agent;
 
     eXosip_reg_t *j_reg;        /* my registrations */
-    eXosip_call_t *j_calls;     /* my calls        */
+    eXosip_call_t *j_calls;     /* my calls        */ //发invite/notify或者收invite时，会初始化一个eXosip_call_t，放入j_calls
 #ifndef MINISIZE
     eXosip_subscribe_t *j_subscribes;   /* my friends      */
     eXosip_notify_t *j_notifies;        /* my susbscribers */
