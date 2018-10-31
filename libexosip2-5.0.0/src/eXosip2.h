@@ -414,7 +414,7 @@ struct eXosip_counters {
 
   typedef struct eXosip_t eXosip_t;
 
-  struct eXosip_t {     //全局结构体
+  struct eXosip_t {     //全局结构体(excontext)
 #ifndef MINISIZE
     struct eXosip_stats statistics;
     struct eXosip_counters average_transactions;
