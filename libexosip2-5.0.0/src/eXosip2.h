@@ -225,8 +225,8 @@ extern "C" {
     osip_message_t *d_200Ok;
     osip_message_t *d_ack;
 
-    osip_list_t *d_inc_trs;
-    osip_list_t *d_out_trs;
+    osip_list_t *d_inc_trs; //在会话内收到下述消息，会设置d_inc_trs。==>bye,cancel,reinvite,subscribe,notify,message
+    osip_list_t *d_out_trs; //发送会话内的非invite消息时，会设置d_out_trs
     int d_retry;                /* avoid too many unsuccessful retry */
     int d_mincseq;              /* remember cseq after PRACK and UPDATE during setup */
 
@@ -238,10 +238,11 @@ extern "C" {
 
   struct eXosip_call_t {
 
-    int c_id;
-    eXosip_dialog_t *c_dialogs;
-    osip_transaction_t *c_inc_tr;  //incoming invite ?
-    osip_transaction_t *c_out_tr;  //out invite ?  eXosip_call_t是表示B2BUA的结构体? 2018.10.19
+    int c_id; //上行会话和下行会话 会初始化两个eXosip_call_t，各有要给c_id
+    eXosip_dialog_t *c_dialogs; //上行:收到invite，下行:收到180ring的时候，会初始化一个
+    								//eXosip_dialog_t，放入c_dialogs
+    osip_transaction_t *c_inc_tr;  //收到invite时，将invite transaction存在c_inc_tr
+    osip_transaction_t *c_out_tr;  //发invite或notify时,会将out transaction赋给c_out_tr
     int c_retry;                /* avoid too many unsuccessful retry */
     void *external_reference;
 

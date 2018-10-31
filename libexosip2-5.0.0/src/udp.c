@@ -785,7 +785,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
   }
 
   transaction = NULL;
-  if (ctx_type != -1) {  //这个条件分支都是在init osip_transaction_t
+  if (ctx_type != -1) {  //这个条件分支都是在init osip_transaction_t，并将transaction挂在到excontext->j_osip上
     i = _eXosip_transaction_init (excontext, &transaction, (osip_fsm_type_t) ctx_type, excontext->j_osip, evt->sip);
     if (i != 0) {
       osip_event_free (evt);
@@ -812,7 +812,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
 
   jd = NULL;
   /* first, look for a Dialog in the map of element */
-  for (jc = excontext->j_calls; jc != NULL; jc = jc->next) {
+  for (jc = excontext->j_calls; jc != NULL; jc = jc->next) {  //如果是incoming invite，进不去这个分支
     for (jd = jc->c_dialogs; jd != NULL; jd = jd->next) {
       if (jd->d_dialog != NULL) {
         if (osip_dialog_match_as_uas (jd->d_dialog, evt->sip) == 0)
@@ -823,7 +823,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
       break;
   }
 
-  /* check CSeq */
+  /* check CSeq */ //jd != NULL，能匹配上，暂时不看。先看incoming invite，整个会话的第一条消息，看dialog和call是怎么建立的  2018.10.20
   if (jd != NULL && transaction != NULL && evt->sip != NULL && evt->sip->cseq != NULL && evt->sip->cseq->number != NULL) {
     if (jd->d_dialog != NULL && jd->d_dialog->remote_cseq > 0) {
       int cseq = osip_atoi (evt->sip->cseq->number);
@@ -878,7 +878,7 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
     }
   }
 #ifndef MINISIZE
-  if (ctx_type == IST) {
+  if (ctx_type == IST) {  //invite消息，回复100trying
     i = _eXosip_build_response_default (excontext, &answer, NULL, 100, evt->sip);
     if (i != 0) {
       _eXosip_transaction_free (excontext, transaction);
@@ -888,11 +888,11 @@ _eXosip_process_newrequest (struct eXosip_t *excontext, osip_event_t * evt, int 
     osip_message_set_content_length (answer, "0");
     /*  send message to transaction layer */
 
-    evt_answer = osip_new_outgoing_sipmessage (answer);
+    evt_answer = osip_new_outgoing_sipmessage (answer);  //初始化一个回复event
     evt_answer->transactionid = transaction->transactionid;
 
     /* add the REQUEST & the 100 Trying */
-    osip_transaction_add_event (transaction, evt_answer);
+    osip_transaction_add_event (transaction, evt_answer); //evt_answer挂到transaction中，transaction已经挂在eXosip_t->j_osip上
     _eXosip_wakeup (excontext);
   }
 #endif

@@ -58,22 +58,22 @@ extern "C" {
  * @struct osip_dialog
  */
   struct osip_dialog {
-    char *call_id;                                               /**< Call-ID*/
-    char *local_tag;                                             /**< local tag */
-    char *remote_tag;                                            /**< remote tag */
-    char *line_param;                                            /**< line param from request uri for incoming calls */
-    osip_list_t route_set;                              /**< route set */
-    int local_cseq;                                              /**< last local cseq */
-    int remote_cseq;                                             /**< last remote cseq*/
-    osip_to_t *remote_uri;                               /**< remote_uri */
-    osip_from_t *local_uri;                              /**< local_uri */
+    char *call_id;         /**< Call-ID*/
+    char *local_tag;       /**< local tag */ //对uas,是to tag. 对uac,是from tag
+    char *remote_tag;      /**< remote tag */ //对uas，是from tag. 对uac，是to tag
+    char *line_param;      /**< line param from request uri for incoming calls */
+    osip_list_t route_set;         /**< route set */
+    int local_cseq;                /**< last local cseq */
+    int remote_cseq;               /**< last remote cseq*/
+    osip_to_t *remote_uri;         /**< remote_uri */ //对uas，是from tag. 对uac,是to tag
+    osip_from_t *local_uri;        /**< local_uri */  //与remote_uri相反
     osip_contact_t *remote_contact_uri;
-                                                                                 /**< remote contact_uri */
-    int secure;                                                          /**< use secure transport layer */
+                                   /**< remote contact_uri */
+    int secure;                    /**< use secure transport layer */
 
-    osip_dialog_type_t type;                             /**< type of dialog (CALLEE or CALLER) */
-    state_t state;                                               /**< DIALOG_EARLY || DIALOG_CONFIRMED || DIALOG_CLOSED */
-    void *your_instance;                                 /**< for application data reference */
+    osip_dialog_type_t type;       /**< type of dialog (CALLEE or CALLER) */
+    state_t state;                 /**< DIALOG_EARLY || DIALOG_CONFIRMED || DIALOG_CLOSED */
+    void *your_instance;           /**< for application data reference */
   };
 
 /**

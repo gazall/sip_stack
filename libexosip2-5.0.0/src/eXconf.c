@@ -752,7 +752,7 @@ eXosip_execute (struct eXosip_t *excontext)
   struct timeval lower_tv;
   int i;
 
-#ifndef OSIP_MONOTHREAD  //?
+#ifndef OSIP_MONOTHREAD  //该分支支持多线程
   if (excontext->max_read_timeout>0) {
     lower_tv.tv_sec=0;
     lower_tv.tv_usec=excontext->max_read_timeout;
@@ -806,6 +806,12 @@ eXosip_execute (struct eXosip_t *excontext)
   lower_tv.tv_sec = 0;
   lower_tv.tv_usec = 0;
 #endif
+
+  //先读消息，读到或超时未读到就接着执行下面的状态机函数
+  //可以把读消息和状态机执行函数分开，m个线程专门读(这些线程不需要eXosip_t)。
+  //n个线程专门调用状态机执行函数(这n个线程可以一个自己的eXosip_t，一个n个)
+  //m个读线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
+  //哪一个状态机处理线程处理相应的状态
   i = _eXosip_read_message (excontext, excontext->max_message_to_read, (int) lower_tv.tv_sec, (int) lower_tv.tv_usec);
 
   if (i == -2000) {
