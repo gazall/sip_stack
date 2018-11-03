@@ -437,6 +437,8 @@ struct eXosip_counters {
     char *user_agent;
 
     eXosip_reg_t *j_reg;        /* my registrations */
+
+	//j_calls主要用来收发消息时的会话和事务的匹配
     eXosip_call_t *j_calls;     /* my calls        */ //发invite/notify或者收invite时，会初始化一个eXosip_call_t，放入j_calls
 #ifndef MINISIZE
     eXosip_subscribe_t *j_subscribes;   /* my friends      */
@@ -445,7 +447,7 @@ struct eXosip_counters {
 #endif
     osip_list_t j_transactions;
 
-    osip_t *j_osip;
+    osip_t *j_osip;  //用来存储事务队列，供状态机函数使用
     int j_stop_ua;
 #ifndef OSIP_MONOTHREAD
     void *j_cond;

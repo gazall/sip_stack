@@ -71,6 +71,7 @@ osip_dialog_update_osip_cseq_as_uas (osip_dialog_t * dialog, osip_message_t * in
   return OSIP_SUCCESS;
 }
 
+//更新osip_dialog_t->route_set
 int
 osip_dialog_update_route_set_as_uac (osip_dialog_t * dialog, osip_message_t * response)
 {
@@ -125,6 +126,7 @@ osip_dialog_update_route_set_as_uac (osip_dialog_t * dialog, osip_message_t * re
   return OSIP_SUCCESS;
 }
 
+设置osip_dialog_t->remote_tag(sip消息->to tag)
 int
 osip_dialog_update_tag_as_uac (osip_dialog_t * dialog, osip_message_t * response)
 {
@@ -227,6 +229,10 @@ osip_dialog_match_as_uac (osip_dialog_t * dlg, osip_message_t * answer)
   return OSIP_UNDEFINED_ERROR;
 }
 
+//匹配uas dialog
+//匹配规则：
+//1.先匹配callid
+//2.再匹配remote tag
 int
 osip_dialog_match_as_uas (osip_dialog_t * dlg, osip_message_t * request)
 {
@@ -295,6 +301,7 @@ osip_dialog_match_as_uas (osip_dialog_t * dlg, osip_message_t * request)
   return OSIP_UNDEFINED_ERROR;
 }
 
+//init dialog,为dialog的各个字段赋值
 static int
 __osip_dialog_init (osip_dialog_t ** dialog, osip_message_t * invite, osip_message_t * response, osip_from_t * local, osip_to_t * remote, osip_message_t * remote_msg)
 {
@@ -417,6 +424,7 @@ __osip_dialog_init (osip_dialog_t ** dialog, osip_message_t * invite, osip_messa
   return OSIP_SUCCESS;
 }
 
+//初始化uac eXosip_dialog_t，下行在收到180的时候调用该函数
 int
 osip_dialog_init_as_uac (osip_dialog_t ** dialog, osip_message_t * response)
 {

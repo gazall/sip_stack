@@ -138,6 +138,8 @@ _eXosip_process_bye (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dial
   _eXosip_wakeup (excontext);
 }
 
+//构造eXosip_event_t *je用于向业务层上报EXOSIP_CALL_ACK事件
+//从该ACK消息匹配到的事务中获取orig_request/last_response赋值给je->request/response
 static void
 _eXosip_process_ack (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, osip_event_t * evt)
 {
@@ -1420,6 +1422,7 @@ udp_tl_learn_port_from_via (struct eXosip_t *excontext, osip_message_t * sip)
   return;
 }
 
+//处理接收socket接收到的消息，该函数是接收线程处理的主流程
 int
 _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t length, int socket, char *host, int port, char *received_host, int *rport_port)
 {

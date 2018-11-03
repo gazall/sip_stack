@@ -118,6 +118,12 @@ _eXosip_call_reuse_contact (osip_message_t * invite, osip_message_t * msg)
   return i;
 }
 
+//通过tid从excontext->j_calls中匹配到call，dialog，transaction
+//匹配规则如下:
+//1.先看tid能否匹配到call的上行invite对应的事务
+//2.再看tid能否匹配到call的下行invite对应的事务
+//3.看tid能否匹配到call中的上行非invite消息对应的事务
+//4.看tid能否匹配到call中的下行invite对应的事务
 int
 _eXosip_call_transaction_find (struct eXosip_t *excontext, int tid, eXosip_call_t ** jc, eXosip_dialog_t ** jd, osip_transaction_t ** tr)
 {
@@ -236,6 +242,11 @@ eXosip_call_build_initial_invite (struct eXosip_t *excontext, osip_message_t ** 
   return OSIP_SUCCESS;
 }
 
+//初始化eXosip_call_t和osip_transaction_t，osip_transaction_t保存执行eXosip_call_t的指针
+//将eXosip_t的指针加入到eXosip_t->j_calls链表中
+//将osip_transaction_t挂载到eXosip_t->j_osip->osip_***_transaction状态机链表上
+//初始化osip_event_t，添加到transaction->transactionff队列中，设置transaction的状态和osip_event_t的类型
+//调用eXosip_wakeup激活状态机函数，实际的消息发送是在状态机函数中进行的
 int
 eXosip_call_send_initial_invite (struct eXosip_t *excontext, osip_message_t * invite)
 {
@@ -277,6 +288,8 @@ eXosip_call_send_initial_invite (struct eXosip_t *excontext, osip_message_t * in
   return jc->c_id;
 }
 
+//构造ack消息，did的作用是找到该ack消息所属的dialog和call
+//根据dialog和call的信息来构造该ack消息
 int
 eXosip_call_build_ack (struct eXosip_t *excontext, int did, osip_message_t ** _ack)
 {
@@ -352,6 +365,14 @@ eXosip_call_build_ack (struct eXosip_t *excontext, int did, osip_message_t ** _a
   return OSIP_SUCCESS;
 }
 
+
+//发送ack消息
+//目的host/port填充规则如下:
+//1.先看:要发送的ack消息存在route头域,且route头域存在"lr"
+//，则使用route的host/port填充目的host/port
+//2.上述不成立,再看:要发送的ack消息的request line存在maddr，
+//用maddr填充host，用request line的port填充port
+//3.上述都不成立,使用request line的host/port填充目的host/port
 int
 eXosip_call_send_ack (struct eXosip_t *excontext, int did, osip_message_t * ack)
 {
@@ -672,6 +693,8 @@ eXosip_call_build_notify (struct eXosip_t *excontext, int did, int subscription_
 
 #endif
 
+//根据tid匹配已有的事务
+//根据已有的事务信息构建answer消息
 int
 eXosip_call_build_answer (struct eXosip_t *excontext, int tid, int status, osip_message_t ** answer)
 {
@@ -748,6 +771,9 @@ _eXosip_header_strcasestr(osip_message_t *message, const char *hname, const char
   return header;
 }
 
+//发送180ring消息时，
+//1.如果参数answer为空，则先构造answer再通知状态机发送该消息
+//2.如果answer非空，直接发送消息
 int
 eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_message_t * answer)
 {

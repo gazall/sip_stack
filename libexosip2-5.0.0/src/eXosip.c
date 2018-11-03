@@ -1018,6 +1018,7 @@ eXosip_automatic_action (struct eXosip_t *excontext)
 
 }
 
+//更新新建的call和dialog的cid和did
 void
 _eXosip_update (struct eXosip_t *excontext)
 {

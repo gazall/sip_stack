@@ -65,7 +65,7 @@
 	};
 	
 	//收到invite，构建uas dialog. 收到180/notify/200OK for subscribe, 构建uac dialog
-	//相比osip_dialog_t，eXosip_dialog_t有了自己的状态，存在最新的收发消息是上面(d_inc_trs/d_out_trs)
+	//相比osip_dialog_t，eXosip_dialog_t有了自己的状态，会保存最新的收发消息(d_inc_trs/d_out_trs)
      struct eXosip_dialog_t {
 		int d_id;
 		osip_dialog_t *d_dialog;    /* active dialog */
@@ -95,7 +95,7 @@
 		eXosip_dialog_t *c_dialogs; //上行:收到invite，下行:收到180ring的时候，会使用invite或180消息初始化一个
 										//eXosip_dialog_t，放入c_dialogs。主要是初始化eXosip_dialog_t->d_dialog
 										//eXosip_dialog_t->d_inc_trs/d_out_trs没有赋值，只分配了一块空间
-										
+						
 		osip_transaction_t *c_inc_tr;  //收到invite时，将invite transaction存在c_inc_tr
 		osip_transaction_t *c_out_tr;  //发invite或notify时,会将out transaction赋给c_out_tr
 		int c_retry;                /* avoid too many unsuccessful retry */
@@ -107,6 +107,7 @@
 		eXosip_call_t *parent;
 	};
   
+ 
  struct eXosip_t {     //全局结构体(excontext)
 #ifndef MINISIZE
     struct eXosip_stats statistics;
@@ -130,6 +131,8 @@
     char *user_agent;
 
     eXosip_reg_t *j_reg;        /* my registrations */
+	
+	//j_calls主要用来收发消息时的会话和事务的匹配
     eXosip_call_t *j_calls;     /* my calls        */ //发invite/notify或者收invite时，会初始化一个eXosip_call_t，放入j_calls
 #ifndef MINISIZE
     eXosip_subscribe_t *j_subscribes;   /* my friends      */
@@ -138,7 +141,7 @@
 #endif
     osip_list_t j_transactions;
 
-    osip_t *j_osip;
+    osip_t *j_osip;  //用来存储事务队列，供状态机函数使用
     int j_stop_ua;
 #ifndef OSIP_MONOTHREAD
     void *j_cond;
@@ -225,6 +228,7 @@ int _eXosip_event_add (struct eXosip_t *excontext, eXosip_event_t * je)
 //该函数做的事情:socket, bind, listen, put listen socket to select, recvfrom, handle_msg
 int eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr, int port, int family, int secure)
 
+
 //单线程的时候，将接收socket放到select，socket有消息到来触发select。执行read_message->handle_message等
 //一系列函数。执行过程中，会根据不同的消息通知上层业务相关的业务到来，或者向transaction->transactionff
 //中写数据，之后osip_***_execute这些状态机函数会从transactionff中取数据，执行相应的状态机处理流程。
@@ -244,6 +248,10 @@ int eXosip_execute (struct eXosip_t *excontext);
 int _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_max, int usec_max)
 
 
+//向管道写数据，触发管道读端，执行状态机函数。
+void _eXosip_wakeup (struct eXosip_t *excontext);
+/*****初始化部分的函数  end*********/
+
 //更新新建call和dialog的cid和did
 void _eXosip_update (struct eXosip_t *excontext);
 
@@ -253,8 +261,117 @@ int _eXosip_build_response_default (struct eXosip_t *excontext, osip_message_t *
 //设置response的contact, record-route(把request的record-route拷贝到response消息上)
 int _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osip_message_t * response, osip_message_t * request);
 
-//业务线程等待协议栈上报eXosip_event_t
-eXosip_event_t *eXosip_event_wait (struct eXosip_t * excontext, int tv_s, int tv_ms)
+//匹配uas dialog
+//匹配规则：
+//1.先匹配callid
+//2.再匹配remote tag
+int osip_dialog_match_as_uas (osip_dialog_t * dlg, osip_message_t * request)
 
-//触发
-_eXosip_wakeup (struct eXosip_t *excontext);
+//如果tv1比tv2大，就把tv2赋值给tv1
+void min_timercmp (struct timeval *tv1, struct timeval *tv2)
+
+//将osip_message_t组成osip_event_t
+osip_event_t *osip_new_outgoing_sipmessage (osip_message_t * sip);
+
+//发送回复消息
+//发送的目的host/port填充方式如下:
+//1.topvia maddr不空，host = maddr->gvalue，否则host = received->gvalue，
+//如果topvia received也为空，host = topvia->host
+//2.rport不空，port = rport->gvalue，否则port = topvia->port
+int __osip_transaction_snd_xxx (osip_transaction_t * ist, osip_message_t * msg)
+
+//将消息转成字符串，再发送出去
+//实际是调用eXtl_udp.tl_send_message来发送消息
+int _eXosip_snd_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_message_t * sip, char *host, int port, int out_socket)
+
+//evt是从transaction->transactionff中取出来的
+//根据transaction->state(事务的当前状态)和evt->type(新收到消息的类型) 来执行相应的状态机函数
+int osip_transaction_execute (osip_transaction_t * transaction, osip_event_t * evt)
+
+//初始化eXosip_call_t和osip_transaction_t，osip_transaction_t保存执行eXosip_call_t的指针
+//将eXosip_t的指针加入到eXosip_t->j_calls链表中
+//将osip_transaction_t挂载到eXosip_t->j_osip->osip_***_transaction状态机链表上
+//初始化osip_event_t，添加到transaction->transactionff队列中，设置transaction的状态和osip_event_t的类型
+//调用eXosip_wakeup激活状态机函数，实际的消息发送是在状态机函数中进行的
+int eXosip_call_send_initial_invite (struct eXosip_t *excontext, osip_message_t * invite)
+
+//查找收到或发出去的消息(evt)是否和已存在的事务相匹配
+//先判断evt属于osip->osip_***_transactions中的哪一个类型
+//然后调用osip_transaction_find函数判断evt和对应类型的事务中的事务是否匹配
+//consume = 1表示，如果匹配上，将evt push_back到查找到的transaction->transactionff中
+osip_transaction_t *__osip_find_transaction (osip_t * osip, osip_event_t * evt, int consume)
+
+//判断evt是否和transactions中的某个事务相匹配
+//判断规则如下:
+//对于请求消息：收到的消息和已存在的transactions中的transaction相比较，
+//			  topvia的brach、host和port字段、CSeq的Method字段都相等，则认为是同一个transaction
+//对于回复消息：收到的消息和transactions中的transaction相比较，topvia的
+//			  branch、CSeq的Method字段都相等，则认为是同一个transaction
+osip_transaction_t *osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
+
+//收到1xx消息时，状态机里会调用该函数进行处理
+//如果是100trying消息，上报给业务层一个EXOSIP_CALL_PROCEEDING事件，然后退出当前函数
+//如果是180ring消息，构建一个eXosip_dialog_t，放入eXosip_call_t->j_calls中。之后给业务层
+//上报EXOSIP_CALL_RINGING事件
+static void cb_rcv1xx (int type, osip_transaction_t * tr, osip_message_t * sip)
+
+//更新新建的call和dialog的cid和did
+void _eXosip_update (struct eXosip_t *excontext)
+
+//通过tid从excontext->j_calls中匹配到call，dialog，transaction
+//匹配规则如下:
+//1.先看tid能否匹配到call的上行invite对应的事务
+//2.再看tid能否匹配到call的下行invite对应的事务
+//3.看tid能否匹配到call中的上行非invite消息对应的事务
+//4.看tid能否匹配到call中的下行invite对应的事务
+int _eXosip_call_transaction_find (struct eXosip_t *excontext, int tid, eXosip_call_t ** jc, eXosip_dialog_t ** jd, osip_transaction_t ** tr)
+
+//设置response的contact，record-route(把request的record-route拷贝到response消息上)
+int _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osip_message_t * response, osip_message_t * request)
+
+//根据tid匹配已有的事务
+//根据已有的事务信息构建answer消息
+int eXosip_call_build_answer (struct eXosip_t *excontext, int tid, int status, osip_message_t **answer)
+
+//发送180ring消息时，
+//1.如果参数answer为空，则先构造answer再通知状态机发送该消息
+//2.如果answer非空，直接发送消息
+int
+eXosip_call_send_answer (struct eXosip_t *excontext, int tid, int status, osip_message_t * answer)
+
+//根据jc,jd构建answer消息，send = 1表示通知状态机触发发送消息。
+//send设置非1表示只构建消息，不发送函数
+int _eXosip_answer_invite_123456xx (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, int code, osip_message_t ** answer, int send)
+
+接上面的函数说明:业务层调用时，只需要调用eXosip_call_send_answer，参数answer填NULL即可，检测到answer为NULL时，该函数会调用_eXosip_answer_invite_123456xx来构建answer。
+业务层不必显示调用eXosip_call_build_answer构造消息，再调用eXosip_call_send_answer发送消息。
+
+//处理接收socket接收到的消息，该函数是接收线程处理的主流程
+int _eXosip_handle_incoming_message (struct eXosip_t *excontext, char *buf, size_t length, int socket, char *host, int port, char *received_host, int *rport_port)
+
+//构造eXosip_event_t *je用于向业务层上报EXOSIP_CALL_ACK事件
+//从该ACK消息匹配到的事务中获取orig_request/last_response赋值给je->request/response
+static void _eXosip_process_ack (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, osip_event_t * evt)
+
+//根据参数jid(did)找到和该did相匹配的eXosip_call_t和eXosip_dialog_t
+int _eXosip_call_dialog_find (struct eXosip_t *excontext, int jid, eXosip_call_t ** jc, eXosip_dialog_t ** jd)
+
+//构造ack消息，did的作用是找到该ack消息所属的dialog和call
+//根据dialog和call的信息来构造该ack消息
+int eXosip_call_build_ack (struct eXosip_t *excontext, int did, osip_message_t ** _ack)
+
+//发送ack消息
+//目的host/port填充规则如下:
+//1.先看:要发送的ack消息存在route头域,且route头域存在"lr"
+//，则使用route的host/port填充目的host/port
+//2.上述不成立,再看:要发送的ack消息的request line存在maddr，
+//用maddr填充host，用request line的port填充port
+//3.上述都不成立,使用request line的host/port填充目的host/port
+int eXosip_call_send_ack (struct eXosip_t *excontext, int did, osip_message_t * ack)
+
+//init dialog,为dialog的各个字段赋值
+static int __osip_dialog_init (osip_dialog_t ** dialog, osip_message_t * invite, osip_message_t * response, osip_from_t * local, osip_to_t * remote, osip_message_t * remote_msg)
+
+//初始化uac eXosip_dialog_t，下行在收到180的时候调用该函数
+int osip_dialog_init_as_uac (osip_dialog_t ** dialog, osip_message_t * response)
+

@@ -45,6 +45,7 @@ add_gettimeofday (struct timeval *atv, int ms)
   atv->tv_sec += m;
 }
 
+//如果tv1比tv2大，就把tv2赋值给tv1
 void
 min_timercmp (struct timeval *tv1, struct timeval *tv2)
 {

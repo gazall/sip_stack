@@ -88,6 +88,8 @@ __osip_event_new (type_t type, int transactionid)
 /* USED ONLY BY THE USER.                             */
 /* INPUT : osip_message_t *sip | sip message for transaction.  */
 /* returns null on error. */
+
+//将osip_message_t组成osip_event_t
 osip_event_t *
 osip_new_outgoing_sipmessage (osip_message_t * sip)
 {

@@ -155,6 +155,8 @@ _eXosip_register_contact_is_modified(struct eXosip_t *excontext, eXosip_reg_t *j
   }
 }
 
+//将消息转成字符串，再发送出去
+//实际是调用eXtl_udp.tl_send_message来发送消息
 int
 _eXosip_snd_message (struct eXosip_t *excontext, osip_transaction_t * tr, osip_message_t * sip, char *host, int port, int out_socket)
 {
@@ -467,6 +469,10 @@ _eXosip_delete_reserved (osip_transaction_t * transaction)
   osip_transaction_set_reserved5 (transaction, NULL);
 }
 
+//收到1xx消息时，状态机里会调用该函数进行处理
+//如果是100trying消息，上报给业务层一个EXOSIP_CALL_PROCEEDING事件，然后退出当前函数
+//如果是180ring消息，构建一个eXosip_dialog_t，放入eXosip_call_t->j_calls中。之后给业务层
+//上报EXOSIP_CALL_RINGING事件
 static void
 cb_rcv1xx (int type, osip_transaction_t * tr, osip_message_t * sip)
 {

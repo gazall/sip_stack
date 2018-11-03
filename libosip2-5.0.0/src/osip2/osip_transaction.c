@@ -342,6 +342,8 @@ osip_transaction_add_event (osip_transaction_t * transaction, osip_event_t * evt
   return OSIP_SUCCESS;
 }
 
+//evt是从transaction->transactionff中取出来的
+//根据transaction->state(事务的当前状态)和evt->type(新收到消息的类型) 来执行相应的状态机函数
 int
 osip_transaction_execute (osip_transaction_t * transaction, osip_event_t * evt)
 {
@@ -806,6 +808,11 @@ __osip_transaction_need_timer_x_event (void *xixt, struct timeval * timer, int c
   return NULL;
 }
 
+//发送回复消息
+//发送的目的host/port填充方式如下:
+//1.topvia maddr不空，host = maddr->gvalue，否则host = received->gvalue，
+//如果topvia received也为空，host = topvia->host
+//2.rport不空，port = rport->gvalue，否则port = topvia->port
 int
 __osip_transaction_snd_xxx (osip_transaction_t * ist, osip_message_t * msg)
 {

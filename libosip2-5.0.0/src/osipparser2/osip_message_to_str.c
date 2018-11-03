@@ -108,6 +108,7 @@ __osip_message_startline_to_strresp (osip_message_t * sip, char **dest)
   return OSIP_SUCCESS;
 }
 
+//将消息的第一行转成字符串存入dest
 static int
 __osip_message_startline_to_str (osip_message_t * sip, char **dest)
 {

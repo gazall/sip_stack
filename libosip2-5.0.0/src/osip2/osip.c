@@ -716,6 +716,10 @@ osip_find_transaction (osip_t * osip, osip_event_t * evt)
 }
 #endif
 
+//查找收到或发出去的消息(evt)是否和已存在的事务相匹配
+//先判断evt属于osip->osip_***_transactions中的哪一个类型
+//然后调用osip_transaction_find函数判断evt和对应类型的事务中的事务是否匹配
+//consume = 1表示，如果匹配上，将evt push_back到查找到的transaction->transactionff中
 osip_transaction_t *
 __osip_find_transaction (osip_t * osip, osip_event_t * evt, int consume)
 {
@@ -868,6 +872,12 @@ osip_create_transaction (osip_t * osip, osip_event_t * evt)
   return transaction;
 }
 
+//判断evt是否和transactions中的某个事务相匹配
+//判断规则如下:
+//对于请求消息：收到的消息和已存在的transactions中的transaction相比较，
+//			  topvia的brach、host和port字段、CSeq的Method字段都相等，则认为是同一个transaction
+//对于回复消息：收到的消息和transactions中的transaction相比较，topvia的
+//			  branch、CSeq的Method字段都相等，则认为是同一个transaction
 osip_transaction_t *
 osip_transaction_find (osip_list_t * transactions, osip_event_t * evt)
 {

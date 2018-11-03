@@ -172,6 +172,7 @@ _eXosip_build_response_default (struct eXosip_t *excontext, osip_message_t ** de
   return OSIP_SUCCESS;
 }
 
+//设置response的contact，record-route(把request的record-route拷贝到response消息上)
 int
 _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osip_message_t * response, osip_message_t * request)
 {
@@ -268,6 +269,8 @@ _eXosip_complete_answer_that_establish_a_dialog (struct eXosip_t *excontext, osi
   return OSIP_SUCCESS;
 }
 
+//根据jc,jd构建answer消息，send = 1表示通知状态机触发发送消息。
+//send设置非1表示只构建消息，不发送函数
 int
 _eXosip_answer_invite_123456xx (struct eXosip_t *excontext, eXosip_call_t * jc, eXosip_dialog_t * jd, int code, osip_message_t ** answer, int send)
 {

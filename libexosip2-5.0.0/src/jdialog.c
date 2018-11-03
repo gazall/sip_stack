@@ -32,6 +32,8 @@
 
 #include "eXosip2.h"
 
+
+//根据参数jid(did)找到和该did相匹配的eXosip_call_t和eXosip_dialog_t
 int
 _eXosip_call_dialog_find (struct eXosip_t *excontext, int jid, eXosip_call_t ** jc, eXosip_dialog_t ** jd)
 {
