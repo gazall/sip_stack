@@ -23,11 +23,29 @@
   
   
 二、RFC3261:
-	还没看  2018.10.31
+	1.sip逻辑上是分层的，由下到上:
+	Transaction User(TU)
+	事务层
+	传输层
+	编码层
+	
+	2.dialog含义
+	1)only invite can create a dialog
+	2)is peer-to-peer
+	3)identified by a callid, local tag and a remote tag.
+	
+	3.transaction含义
+	1)initial request + last response
+	2)if request is invite, and the last response is non-2xx, Ack is part of this transaction.
+	  elif request is invite, last response is 2XX, Ack for this 2XX is another transaction.
+	  
 	
 	
 三、主要数据结构：
-	  struct osip_dialog {
+	osip_dialog_t <1对1 ==> eXosip_dialog_t <多对1 ==> eXosip_call_t->c_dialogs <多对1 ==> eXosip_t->j-calls
+
+	 //收到invite，构建uas dialog. 收到180/notify/200OK for subscribe, 构建uac dialog
+	struct osip_dialog {
 		char *call_id;         /**< Call-ID*/
 		char *local_tag;       /**< local tag */ //对uas,是to tag. 对uac,是from tag
 		char *remote_tag;      /**< remote tag */ //对uas，是from tag. 对uac，是to tag
@@ -44,8 +62,10 @@
 		osip_dialog_type_t type;       /**< type of dialog (CALLEE or CALLER) */
 		state_t state;                 /**< DIALOG_EARLY || DIALOG_CONFIRMED || DIALOG_CLOSED */
 		void *your_instance;           /**< for application data reference */
-  };
-  
+	};
+	
+	//收到invite，构建uas dialog. 收到180/notify/200OK for subscribe, 构建uac dialog
+	//相比osip_dialog_t，eXosip_dialog_t有了自己的状态，存在最新的收发消息是上面(d_inc_trs/d_out_trs)
      struct eXosip_dialog_t {
 		int d_id;
 		osip_dialog_t *d_dialog;    /* active dialog */
@@ -69,7 +89,8 @@
 		eXosip_dialog_t *parent;
   };
   
-    struct eXosip_call_t {
+	//发送invite/notify或收到invite时，会初始化eXosip_call_t
+	struct eXosip_call_t {
 		int c_id; //上行会话和下行会话 会初始化两个eXosip_call_t，各有要给c_id
 		eXosip_dialog_t *c_dialogs; //上行:收到invite，下行:收到180ring的时候，会使用invite或180消息初始化一个
 										//eXosip_dialog_t，放入c_dialogs。主要是初始化eXosip_dialog_t->d_dialog
@@ -84,7 +105,7 @@
 
 		eXosip_call_t *next;
 		eXosip_call_t *parent;
-  };
+	};
   
  struct eXosip_t {     //全局结构体(excontext)
 #ifndef MINISIZE
@@ -194,12 +215,34 @@
  
 四、主要函数说明
 
-//先读消息，读到或超时未读到就接着执行下面的状态机函数，效率不高
-//可以把读消息和状态机执行函数分开，m个线程专门读(这些线程不需要eXosip_t)。
-//n个线程专门调用状态机执行函数(这n个线程可以一个自己的eXosip_t，一共n个)
-//m个读线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
+/*****初始化部分的函数  start*********/
+//协议栈通过该函数将当前事件(eXosip_event_t)上报给业务层，业务层可以开启一个线程循环调用该函数来接收事件的到来
+eXosip_event_t *eXosip_event_wait (struct eXosip_t * excontext, int tv_s, int tv_ms)
+
+//协议栈向业务层上报事件的函数
+int _eXosip_event_add (struct eXosip_t *excontext, eXosip_event_t * je)
+
+//该函数做的事情:socket, bind, listen, put listen socket to select, recvfrom, handle_msg
+int eXosip_listen_addr (struct eXosip_t *excontext, int transport, const char *addr, int port, int family, int secure)
+
+//单线程的时候，将接收socket放到select，socket有消息到来触发select。执行read_message->handle_message等
+//一系列函数。执行过程中，会根据不同的消息通知上层业务相关的业务到来，或者向transaction->transactionff
+//中写数据，之后osip_***_execute这些状态机函数会从transactionff中取数据，执行相应的状态机处理流程。
+//支持多线程时，相比单线程多了一步，会将wakeup读端也加入select函数中(代码在_eXosip_read_message中)，
+//如果wakeup读端收到消息，就认为状态机函数被激活，激活select，退出_eXosip_read_message，以便迅速执行状态机
+//函数
+//有个疑问，多线程时，多个线程调_eXosip_read_message，多个select同时监听同一个接收接收socket，是什么现象?
+//(也可能是我代码理解错了?，看代码，支持多线程，需要多线程调用eXosip_execute，而eXosip_execute里面会监听接收socket)
+
+//可以把读消息和状态机执行函数分开，1个线程专门读socket(这些线程不需要eXosip_t)。
+//n个线程专门调用状态机执行函数(这n个线程都有一个自己的eXosip_t)
+//读消息线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
 //哪一个状态机处理线程处理相应的状态
+//使用wakeup_socket来做通知，对wakeup_socket的监听从_eXosip_read_message中挪出来，放到eXosip_execute中,
+//_eXosip_read_message只监听接收socket的消息并处理
 int eXosip_execute (struct eXosip_t *excontext);
+int _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_max, int usec_max)
+
 
 //更新新建call和dialog的cid和did
 void _eXosip_update (struct eXosip_t *excontext);

@@ -1543,14 +1543,15 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
     int max = 0;
 
 #ifndef OSIP_MONOTHREAD
-    int wakeup_socket = jpipe_get_read_descr (excontext->j_socketctl);
+    int wakeup_socket = jpipe_get_read_descr (excontext->j_socketctl);  //wakeup_socket是激活事务状态机的管道的读端，
+    																	//当需要激活事务状态机的处理函数时，会向该管道的写端写数据
 #endif
 
     FD_ZERO (&osip_fdset);
     FD_ZERO (&osip_wrset);
-    excontext->eXtl_transport.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max);
+    excontext->eXtl_transport.tl_set_fdset (excontext, &osip_fdset, &osip_wrset, &max); //将接收socket加入read_fd
 #ifndef OSIP_MONOTHREAD
-    eXFD_SET (wakeup_socket, &osip_fdset);
+    eXFD_SET (wakeup_socket, &osip_fdset);  //将wakeup_socket加入read_fd，wakeup_socket作用是激活select
     if (wakeup_socket > max)
       max = wakeup_socket;
 #endif
@@ -1612,7 +1613,7 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
     if ((sec_max == -1) || (usec_max == -1))
       i = select (max + 1, &osip_fdset, NULL, NULL, NULL);  //死等
     else
-      i = select (max + 1, &osip_fdset, NULL, NULL, &tv);
+      i = select (max + 1, &osip_fdset, NULL, NULL, &tv);  //等待tv时间
 #endif
 
 #if 0 //defined (_WIN32_WCE)
@@ -1638,7 +1639,7 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
     osip_compensatetime ();
 
 #ifndef OSIP_MONOTHREAD
-    if ((i > 0) && FD_ISSET (wakeup_socket, &osip_fdset)) {
+    if ((i > 0) && FD_ISSET (wakeup_socket, &osip_fdset)) {  //管道写端有数据写入，
       char buf2[500];
 
       jpipe_read (excontext->j_socketctl, buf2, 499);
@@ -1658,7 +1659,10 @@ _eXosip_read_message (struct eXosip_t *excontext, int max_message_nb, int sec_ma
       if (excontext->cbsipWakeLock!=NULL && excontext->incoming_wake_lock_state==0)
         excontext->cbsipWakeLock(++excontext->incoming_wake_lock_state);
 
-      excontext->eXtl_transport.tl_read_message (excontext, &osip_fdset, &osip_wrset);
+      excontext->eXtl_transport.tl_read_message (excontext, &osip_fdset, &osip_wrset); //该函数会处理从接收socket收到的sip消息,
+      																				 //通知业务层，向wakeup_socket写端写数据，激活状态机函数等操作
+      																				 //该函数不会处理wakeup_socket的读端数据，所以如果是wakeup_socket导致的select触发，
+      																				 //实际_eXosip_read_message不做事情就返回了，这样就可以接下去执行状态机函数
 
     }
 

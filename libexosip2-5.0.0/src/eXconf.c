@@ -807,11 +807,21 @@ eXosip_execute (struct eXosip_t *excontext)
   lower_tv.tv_usec = 0;
 #endif
 
-  //先读消息，读到或超时未读到就接着执行下面的状态机函数
-  //可以把读消息和状态机执行函数分开，m个线程专门读(这些线程不需要eXosip_t)。
-  //n个线程专门调用状态机执行函数(这n个线程可以一个自己的eXosip_t，一个n个)
-  //m个读线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
+  //单线程的时候，将接收socket放到select，socket有消息到来触发select。执行read_message->handle_message等
+  //一系列函数。执行过程中，会根据不同的消息通知上层业务相关的业务到来，或者向transaction->transactionff
+  //中写数据，之后osip_***_execute这些状态机函数会从transactionff中取数据，执行相应的状态机处理流程。
+  //支持多线程时，相比单线程多了一步，会将wakeup读端也加入select函数中(代码在_eXosip_read_message中)，
+  //如果wakeup读端收到消息，就认为状态机函数被激活，激活select，退出_eXosip_read_message，以便迅速执行状态机
+  //函数
+  //有个疑问，多线程时，多个线程调_eXosip_read_message，多个select同时监听同一个接收接收socket，是什么现象?
+  //(也可能是我代码理解错了，看代码，支持多线程，需要多线程调用eXosip_execute，eXosip_execute里面会监听接收socket)
+  
+  //可以把读消息和状态机执行函数分开，1个线程专门读socket(这些线程不需要eXosip_t)。
+  //n个线程专门调用状态机执行函数(这n个线程都有一个自己的eXosip_t)
+  //读消息线程根据sip消息的from、to头域做hash，得到eXosip_t[i]，以此确定通知
   //哪一个状态机处理线程处理相应的状态
+  //使用wakeup_socket来做通知，对wakeup_socket的监听从_eXosip_read_message中挪出来，放到eXosip_execute中,
+  //_eXosip_read_message只监听接收socket的消息并处理
   i = _eXosip_read_message (excontext, excontext->max_message_to_read, (int) lower_tv.tv_sec, (int) lower_tv.tv_usec);
 
   if (i == -2000) {
