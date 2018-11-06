@@ -123,7 +123,7 @@ struct eXtltcp {
   struct sockaddr_storage ai_addr;
   int ai_addr_len;
   
-  struct _tcp_stream socket_tab[EXOSIP_MAX_SOCKETS];
+  struct _tcp_stream socket_tab[EXOSIP_MAX_SOCKETS];  //key : index, value : socket
 };
 
 static int
@@ -373,6 +373,11 @@ buffer_find (const char *haystack, size_t haystack_len, const char *needle)
 
 /* consume any complete messages in sockinfo->buf and
  return the total number of bytes consumed */
+//1.流定界，从接收到的消息中取出完整的sip消息
+//2.调用_eXosip_handle_incoming_message处理收到的sip消息
+//3.流定界方法:
+//1)通过/r/n/r/n找到sip header，从header中找到content length
+//2)通过content length找到sip body。sip msg len = str(sip header) + content length
 static int
 handle_messages (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
 {
@@ -443,7 +448,7 @@ _tcp_tl_recv (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
 {
   int r;
   
-  if (!sockinfo->buf) {
+  if (!sockinfo->buf) {   //每一个tcp连接都有一个接收缓冲区
     sockinfo->buf = (char *) osip_malloc (SIP_MESSAGE_MAX_LENGTH);
     if (sockinfo->buf == NULL)
       return OSIP_NOMEM;
@@ -469,7 +474,7 @@ _tcp_tl_recv (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
   }
 
   r = (int) recv (sockinfo->socket, sockinfo->buf + sockinfo->buflen, (int)(sockinfo->bufsize - sockinfo->buflen), 0);
-  if (r == 0) {
+  if (r == 0) {  //对端写关闭
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: eof\n", sockinfo->remote_ip, sockinfo->remote_port));
     _eXosip_mark_registration_expired (excontext, sockinfo->reg_call_id);
     _tcp_tl_close_sockinfo (sockinfo);
@@ -487,7 +492,7 @@ _tcp_tl_recv (struct eXosip_t *excontext, struct _tcp_stream *sockinfo)
     _tcp_tl_close_sockinfo (sockinfo);
     return OSIP_UNDEFINED_ERROR;
   }
-  else {
+  else {  //读到 r 长度数据
     int consumed;
     sockinfo->tcp_max_timeout=0;
     OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO1, NULL, "socket %s:%i: read %d bytes\n", sockinfo->remote_ip, sockinfo->remote_port, r));
@@ -520,7 +525,7 @@ tcp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     return OSIP_WRONG_STATE;
   }
   
-  if (FD_ISSET (reserved->tcp_socket, osip_fdset)) {
+  if (FD_ISSET (reserved->tcp_socket, osip_fdset)) {  //listen事件
     /* accept incoming connection */
     char src6host[NI_MAXHOST];
     int recvport = 0;
@@ -535,7 +540,7 @@ tcp_tl_read_message (struct eXosip_t *excontext, fd_set * osip_fdset, fd_set * o
     else
       slen = sizeof (struct sockaddr_in6);
     
-    for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
+    for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {   //找到空闲的位置
       if (reserved->socket_tab[pos].socket == 0)
         break;
     }
@@ -681,6 +686,7 @@ _tcp_tl_is_connected (int sock)
         return -1;
       }
     }
+  	}
     else if (res < 0) {
       OSIP_TRACE (osip_trace (__FILE__, __LINE__, OSIP_INFO2, NULL, "Cannot connect socket node / error in select %s[%d]\n", strerror (ex_errno), ex_errno));
       return -1;
